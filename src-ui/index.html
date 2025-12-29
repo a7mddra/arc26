@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jan 2026: Winter Arc</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        /* Deeper, darker palette */
+        --bg-color: #050505;
+        --card-bg: #0a0a0a;
+        --panel-bg: #080808;
+        --border-color: #1f1f1f;
+        --text-primary: #e0e0e0;
+        --text-secondary: #555;
+
+        /* Type Colors */
+        --danger-color: #da3633;
+        --warning-color: #d29922;
+        --success-color: #238636;
+        --party-color: #db6d28;
+
+        --ended-opacity: 0.25;
+      }
+
+      /* NATIVE APP LOCKDOWN */
+      html,
+      body {
+        background-color: var(--bg-color);
+        color: var(--text-primary);
+        font-family: "Inter", sans-serif;
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        width: 100vw;
+        overflow: hidden; /* Prevent body scroll */
+
+        /* Prevent elastic bouncing on Mac/Trackpads */
+        overscroll-behavior: none;
+
+        /* Prevent text selection -> Feels like an app, not a website */
+        user-select: none;
+        -webkit-user-select: none;
+
+        /* Default cursor */
+        cursor: default;
+      }
+
+      /* Re-enable text selection for inputs only */
+      input,
+      textarea {
+        user-select: text;
+        -webkit-user-select: text;
+        cursor: text;
+      }
+
+      /* --- Scrollbar Customization --- */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: var(--bg-color);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #222;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #333;
+      }
+
+      /* --- Layout --- */
+      .app-container {
+        display: flex;
+        width: 100%;
+        height: 100%;
+        isolation: isolate; /* Create new stacking context */
+      }
+
+      .calendar-section {
+        flex: 1;
+        padding: 2rem;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        overscroll-behavior-y: none; /* specific lock for this container */
+        min-width: 0; /* Flexbox text overflow fix */
+      }
+
+      .editor-section {
+        width: 400px;
+        min-width: 300px;
+        max-width: 800px;
+        background-color: var(--panel-bg);
+        border-left: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        padding: 1.5rem;
+        box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
+        z-index: 10;
+        position: relative;
+        /* Ensure background is solid during resize */
+        background-clip: padding-box;
+      }
+
+      /* Resizer Handle */
+      .resizer {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 6px;
+        cursor: ew-resize;
+        background: transparent;
+        z-index: 20;
+        transition: background 0.2s;
+      }
+      .resizer:hover,
+      .resizer.resizing {
+        background: var(--accent-color, #388bfd);
+      }
+
+      /* --- Typography & Header --- */
+      .top-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+      }
+
+      h1 {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 1.5rem;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--text-primary);
+        font-weight: 400;
+        white-space: nowrap;
+      }
+
+      h1 b {
+        font-weight: 800;
+        color: var(--text-primary);
+      }
+
+      /* Money Display */
+      .wallet-display {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 1.1rem;
+        background: #111;
+        padding: 8px 16px;
+        border-radius: 6px;
+        border: 1px solid var(--border-color);
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        white-space: nowrap;
+      }
+      .wallet-display:hover {
+        border-color: #444;
+        background: #161616;
+      }
+      .wallet-val {
+        color: #85e89d;
+        font-weight: bold;
+      }
+      .wallet-label {
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+      }
+
+      /* --- Calendar Grid --- */
+      .calendar-header {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        margin-bottom: 0.5rem;
+        text-align: right;
+        padding-right: 10px;
+      }
+
+      .weekday {
+        color: var(--text-secondary);
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+      }
+
+      .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 0.75rem;
+        flex: 1;
+        align-content: start;
+        padding-bottom: 50px;
+      }
+
+      /* --- Day Card --- */
+      .day-card {
+        background-color: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        min-height: 120px;
+        padding: 0.75rem;
+        cursor: pointer;
+        transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+          border-color 0.2s;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        overflow: hidden;
+
+        /* Default Glow Color (Fallback) */
+        --glow-color: var(--text-secondary);
+
+        /* Hardware acceleration for smoother hover */
+        transform: translateZ(0);
+        will-change: transform;
+      }
+
+      /* Type-Specific Variables */
+      .day-card.type-exam {
+        border-top: 2px solid var(--danger-color);
+        --glow-color: var(--danger-color);
+      }
+      .day-card.type-study {
+        border-top: 2px solid var(--warning-color);
+        --glow-color: var(--warning-color);
+      }
+      .day-card.type-code {
+        border-top: 2px solid var(--success-color);
+        --glow-color: var(--success-color);
+      }
+      .day-card.type-party {
+        border-top: 2px solid var(--party-color);
+        --glow-color: var(--party-color);
+      }
+
+      /* Spotlight Effect (Quiet) */
+      .day-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(
+          400px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+          rgba(255, 255, 255, 0.04),
+          transparent 40%
+        );
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
+        z-index: 1;
+      }
+
+      /* Hover State (Alive Days) */
+      .day-card:not(.ended):hover {
+        transform: translateY(-2px);
+        z-index: 2;
+      }
+
+      .day-card:not(.ended):hover::before {
+        opacity: 1;
+      }
+
+      /* Active State (Selected) - Dynamic Color Glow */
+      .day-card.active {
+        border-color: var(--glow-color);
+        box-shadow: 0 0 25px -5px var(--glow-color); /* Colored Glow */
+        z-index: 2;
+      }
+
+      .day-card.active .date-number {
+        color: var(--glow-color);
+      }
+
+      /* Ended State (Dead Day) */
+      .day-card.ended {
+        opacity: var(--ended-opacity);
+        filter: grayscale(1);
+        cursor: default;
+        border-color: #111;
+      }
+      .day-card.ended:hover {
+        transform: none;
+        border-color: #111;
+      }
+      .day-card.ended::before {
+        display: none;
+      }
+
+      .date-number {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: var(--text-secondary);
+        position: relative;
+        z-index: 2;
+      }
+
+      .day-badge {
+        font-size: 0.6rem;
+        padding: 2px 6px;
+        border-radius: 2px;
+        text-transform: uppercase;
+        font-weight: bold;
+        letter-spacing: 0.5px;
+      }
+
+      .badge-exam {
+        background: rgba(248, 81, 73, 0.1);
+        color: var(--danger-color);
+      }
+      .badge-study {
+        background: rgba(210, 153, 34, 0.1);
+        color: var(--warning-color);
+      }
+      .badge-code {
+        background: rgba(35, 134, 54, 0.1);
+        color: var(--success-color);
+      }
+
+      .task-preview {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 5;
+        -webkit-box-orient: vertical;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        font-family: "JetBrains Mono", monospace;
+        position: relative;
+        z-index: 2;
+      }
+
+      /* Money Dots */
+      .money-dots {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.7rem;
+        margin-top: 8px;
+        display: flex;
+        gap: 6px;
+      }
+      .dot-green {
+        color: #85e89d;
+      }
+      .dot-red {
+        color: #f85149;
+      }
+
+      /* --- Editor Panel --- */
+      .editor-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 1rem;
+      }
+
+      .editor-date {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        font-family: "JetBrains Mono", monospace;
+      }
+
+      .finance-section {
+        background: #111;
+        padding: 10px;
+        border-radius: 6px;
+        margin-bottom: 15px;
+        border: 1px solid var(--border-color);
+      }
+
+      .finance-row {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 5px;
+      }
+      .finance-item {
+        flex: 1;
+      }
+      .finance-item label {
+        display: block;
+        font-size: 0.7rem;
+        color: #666;
+        margin-bottom: 4px;
+        font-weight: bold;
+      }
+      .finance-input {
+        width: 100%;
+        background: #050505;
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        padding: 6px;
+        border-radius: 4px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.9rem;
+        box-sizing: border-box;
+      }
+      .finance-input:focus {
+        border-color: #555;
+        outline: none;
+      }
+
+      .dashboard-view h2 {
+        font-size: 1.2rem;
+        margin-top: 0;
+        color: #fff;
+      }
+      .dashboard-view p {
+        color: #888;
+        font-size: 0.9rem;
+        line-height: 1.5;
+      }
+
+      .editor-textarea {
+        flex: 1;
+        background-color: transparent;
+        border: none;
+        color: var(--text-primary);
+        font-size: 0.9rem;
+        line-height: 1.6;
+        resize: none;
+        outline: none;
+        padding: 0.5rem 0;
+        font-family: "JetBrains Mono", monospace;
+      }
+
+      /* --- Utils --- */
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 5px;
+        background: #333;
+      }
+      .status-dot.saving {
+        background: var(--warning-color);
+        box-shadow: 0 0 5px var(--warning-color);
+      }
+      .status-dot.saved {
+        background: var(--success-color);
+        box-shadow: 0 0 5px var(--success-color);
+      }
+
+      @media (max-width: 900px) {
+        .app-container {
+          flex-direction: column;
+        }
+        .calendar-section {
+          height: 60%;
+        }
+        .editor-section {
+          width: 100%;
+          height: 40%;
+          border-left: none;
+          border-top: 1px solid var(--border-color);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-container">
+      <!-- Calendar Area -->
+      <div class="calendar-section">
+        <div class="top-bar">
+          <h1><b>2026</b> WINTER ARC</h1>
+          <div class="wallet-display" id="wallet-trigger">
+            <span class="wallet-label">IN POCKET</span>
+            <span class="wallet-val" id="global-total">$0</span>
+          </div>
+        </div>
+
+        <div class="calendar-header">
+          <div class="weekday">Sun</div>
+          <div class="weekday">Mon</div>
+          <div class="weekday">Tue</div>
+          <div class="weekday">Wed</div>
+          <div class="weekday">Thu</div>
+          <div class="weekday">Fri</div>
+          <div class="weekday">Sat</div>
+        </div>
+
+        <div class="calendar-grid" id="grid">
+          <!-- JS will populate this -->
+        </div>
+      </div>
+
+      <!-- Editor Area -->
+      <div class="editor-section" id="editor-panel">
+        <div class="resizer" id="drag-handle"></div>
+
+        <!-- Dynamic Content injected here -->
+        <div
+          id="editor-content-wrapper"
+          style="display: flex; flex-direction: column; height: 100%"
+        >
+          <div class="editor-header">
+            <div class="editor-date" id="editor-date-display">...</div>
+            <div id="save-indicator"><span class="status-dot"></span></div>
+          </div>
+
+          <div class="finance-section">
+            <div class="finance-row">
+              <div class="finance-item">
+                <label>💵 EARNINGS</label>
+                <input
+                  type="number"
+                  id="input-earn"
+                  class="finance-input"
+                  placeholder="0"
+                />
+              </div>
+              <div class="finance-item">
+                <label>💸 SPENT</label>
+                <input
+                  type="number"
+                  id="input-spent"
+                  class="finance-input"
+                  placeholder="0"
+                />
+              </div>
+            </div>
+          </div>
+
+          <textarea
+            id="note-input"
+            class="editor-textarea"
+            placeholder="Select a day to log..."
+          ></textarea>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // --- Configuration ---
+      const STORAGE_KEY = "spatialshot_log_v5";
+
+      // --- Data ---
+      const DEFAULT_DATA = {
+        meta: { initialBalance: 0 },
+        // DECEMBER PREP
+        "2025-12-28": {
+          type: "study",
+          title: "ELC221",
+          text: "🟡 Logic Circuits Prep\n\n- K-Maps Practice.\n- Binary Adders.",
+        },
+        "2025-12-29": {
+          type: "study",
+          title: "ELC221",
+          text: "🟡 Logic Circuits Prep\n\n- Flip Flops (SR, JK, D, T).\n- State Diagrams.",
+        },
+        "2025-12-30": {
+          type: "study",
+          title: "ELC221",
+          text: "🟡 Logic Circuits Prep\n\n- Counters & Registers.\n- Timing Diagrams.",
+        },
+        "2025-12-31": {
+          type: "study",
+          title: "ELC221",
+          text: "🟡 Logic Circuits Prep\n\n- Past Exams.\n- Final Review.\n- New Year? No, Logic Year.",
+        },
+
+        // JANUARY SURVIVAL
+        "2026-01-01": {
+          type: "exam",
+          title: "ELC221",
+          text: "🔴 FINAL: Design of Logic Circuits\n\n- Execution Day.",
+        },
+        "2026-01-02": {
+          type: "study",
+          title: "Study ELC211",
+          text: "🟡 Focus: Electronics of Solids\n\n- Semiconductors concepts.",
+        },
+        "2026-01-03": {
+          type: "study",
+          title: "Study ELC211",
+          text: "🟡 Focus: Electronics of Solids\n\n- Solve past questions.",
+        },
+        "2026-01-04": {
+          type: "study",
+          title: "Study ELC211",
+          text: "🟡 Focus: Electronics of Solids\n\n- Final Review.",
+        },
+        "2026-01-05": {
+          type: "exam",
+          title: "ELC211",
+          text: "🔴 FINAL: Electronics of Solids",
+        },
+        "2026-01-06": {
+          type: "study",
+          title: "Study ELC231",
+          text: "🟡 Focus: Electromagnetic Fields",
+        },
+        "2026-01-07": {
+          type: "study",
+          title: "Study ELC231",
+          text: "🟡 Focus: Electromagnetic Fields",
+        },
+        "2026-01-08": {
+          type: "study",
+          title: "Study ELC231",
+          text: "🟡 Focus: Electromagnetic Fields",
+        },
+        "2026-01-09": {
+          type: "study",
+          title: "Study ELC231",
+          text: "🟡 Focus: Electromagnetic Fields",
+        },
+        "2026-01-10": {
+          type: "study",
+          title: "Study ELC231",
+          text: "🟡 Focus: Electromagnetic Fields",
+        },
+        "2026-01-11": {
+          type: "study",
+          title: "Study ELC231",
+          text: "🟡 Focus: Electromagnetic Fields",
+        },
+        "2026-01-12": {
+          type: "exam",
+          title: "ELC231",
+          text: "🔴 FINAL: Electromagnetic Fields",
+        },
+        "2026-01-13": {
+          type: "study",
+          title: "Study MAT203",
+          text: "🟡 Focus: Probability Theory",
+        },
+        "2026-01-14": {
+          type: "study",
+          title: "Study MAT203",
+          text: "🟡 Focus: Probability Theory",
+        },
+        "2026-01-15": {
+          type: "exam",
+          title: "MAT203",
+          text: "🔴 FINAL: Probability Theory",
+        },
+        "2026-01-16": {
+          type: "study",
+          title: "Study ELP211",
+          text: "🟡 Focus: Advanced Electric Circuits",
+        },
+        "2026-01-17": {
+          type: "study",
+          title: "Study ELP211",
+          text: "🟡 Focus: Advanced Electric Circuits",
+        },
+        "2026-01-18": {
+          type: "study",
+          title: "Study ELP211",
+          text: "🟡 Focus: Advanced Electric Circuits",
+        },
+        "2026-01-19": {
+          type: "study",
+          title: "Study ELP211",
+          text: "🟡 Focus: Advanced Electric Circuits",
+        },
+        "2026-01-20": {
+          type: "study",
+          title: "Study ELP211",
+          text: "🟡 Focus: Advanced Electric Circuits",
+        },
+        "2026-01-21": {
+          type: "study",
+          title: "Study ELP211",
+          text: "🟡 Focus: Advanced Electric Circuits",
+        },
+        "2026-01-22": {
+          type: "party",
+          title: "ELP211 + FREEDOM",
+          text: "🔴 FINAL: Advanced Electric Circuits\n\n🎉 PARTY TIME\n🥵 Google Antigravity",
+        },
+        "2026-01-23": {
+          type: "code",
+          title: "Spatialshot",
+          text: "🥳 SPATIALSHOT SPRINT\n\nTask: Taskbar/Dock Icon",
+        },
+        "2026-01-24": {
+          type: "code",
+          title: "Spatialshot",
+          text: "🥳 SPATIALSHOT SPRINT\n\nTask: Upload Feature in Chat",
+        },
+        "2026-01-25": {
+          type: "code",
+          title: "Spatialshot",
+          text: "🥳 SPATIALSHOT SPRINT\n\nTask: Modernize Chat Interface",
+        },
+        "2026-01-26": {
+          type: "code",
+          title: "Spatialshot",
+          text: "🥳 SPATIALSHOT SPRINT\n\nTask: Multiple AI Providers",
+        },
+        "2026-01-27": {
+          type: "code",
+          title: "Spatialshot",
+          text: "🥳 SPATIALSHOT SPRINT\n\nTask: Dedicated Image Editing Tab",
+        },
+        "2026-01-28": {
+          type: "code",
+          title: "Spatialshot",
+          text: "🥳 SPATIALSHOT SPRINT\n\nTask: Rectangular Selection",
+        },
+        "2026-01-29": {
+          type: "code",
+          title: "Spatialshot",
+          text: "🥳 SPATIALSHOT SPRINT\n\nTask: Privacy & Optimization",
+        },
+        "2026-01-30": {
+          type: "code",
+          title: "Spatialshot",
+          text: "🥳 SPATIALSHOT SPRINT\n\nTask: Differential Updates",
+        },
+        "2026-01-31": {
+          type: "code",
+          title: "Jan Review",
+          text: "🥳 MONTH END\n\n- Pass 95%?",
+        },
+      };
+
+      // --- App Logic ---
+      let appData =
+        JSON.parse(localStorage.getItem(STORAGE_KEY)) || DEFAULT_DATA;
+      if (!appData.meta) appData.meta = { initialBalance: 0 }; // Migration safety
+
+      let selectedDate = null;
+      let currentView = "day"; // 'day' or 'dashboard'
+
+      const grid = document.getElementById("grid");
+      const editorPanel = document.getElementById("editor-panel");
+      const editorContent = document.getElementById("editor-content-wrapper");
+      const globalTotalEl = document.getElementById("global-total");
+
+      // UI Elements for Day View
+      let editorDateDisplay, noteInput, saveIndicator, inputEarn, inputSpent;
+
+      // --- Initialization ---
+      function initUI() {
+        // Grab references to dynamic elements inside the wrapper
+        editorDateDisplay = document.getElementById("editor-date-display");
+        noteInput = document.getElementById("note-input");
+        saveIndicator = document.getElementById("save-indicator");
+        inputEarn = document.getElementById("input-earn");
+        inputSpent = document.getElementById("input-spent");
+
+        // Listeners for Day View inputs
+        noteInput.addEventListener("input", autoSave);
+        inputEarn.addEventListener("input", autoSave);
+        inputSpent.addEventListener("input", autoSave);
+      }
+      initUI();
+
+      // --- Money Logic ---
+      function calculateTotal() {
+        let total = parseFloat(appData.meta.initialBalance) || 0;
+
+        Object.keys(appData).forEach((key) => {
+          if (key === "meta") return;
+          const day = appData[key];
+          const earned = parseFloat(day.earnings) || 0;
+          const spent = parseFloat(day.spent) || 0;
+          total += earned - spent;
+        });
+
+        globalTotalEl.innerText = `$${total.toFixed(0)}`;
+        // Color code total
+        globalTotalEl.style.color = total >= 0 ? "#85e89d" : "#f85149";
+      }
+
+      // --- Dashboard View (Wallet Setup) ---
+      document
+        .getElementById("wallet-trigger")
+        .addEventListener("click", () => {
+          currentView = "dashboard";
+          selectedDate = null;
+          document
+            .querySelectorAll(".day-card")
+            .forEach((c) => c.classList.remove("active"));
+
+          editorContent.innerHTML = `
+            <div class="dashboard-view">
+                <h2>💰 Wallet Setup</h2>
+                <p>Set your starting money. Encouragement to save for outdoor coding sessions.</p>
+                <div class="finance-section">
+                    <label style="color:#666; font-size:0.8rem; font-weight:bold; margin-bottom:5px; display:block;">INITIAL BALANCE ($)</label>
+                    <input type="number" id="input-initial" class="finance-input" value="${appData.meta.initialBalance}" style="font-size:1.5rem;">
+                </div>
+                <div style="margin-top:20px; color:#444; font-size:0.8rem;">
+                    * Total = Initial + Sum(Earnings) - Sum(Spent)
+                </div>
+            </div>
+        `;
+
+          const inputInit = document.getElementById("input-initial");
+          inputInit.addEventListener("input", (e) => {
+            appData.meta.initialBalance = parseFloat(e.target.value) || 0;
+            saveData();
+            calculateTotal();
+          });
+        });
+
+      // --- Day View Restore ---
+      function restoreDayViewHTML() {
+        editorContent.innerHTML = `
+            <div class="editor-header">
+                <div class="editor-date" id="editor-date-display">...</div>
+                <div id="save-indicator"><span class="status-dot"></span></div>
+            </div>
+            
+            <div class="finance-section">
+                <div class="finance-row">
+                    <div class="finance-item">
+                        <label>💵 EARNINGS</label>
+                        <input type="number" id="input-earn" class="finance-input" placeholder="0">
+                    </div>
+                    <div class="finance-item">
+                        <label>💸 SPENT</label>
+                        <input type="number" id="input-spent" class="finance-input" placeholder="0">
+                    </div>
+                </div>
+            </div>
+
+            <textarea id="note-input" class="editor-textarea" placeholder="Select a day to log..."></textarea>
+        `;
+        initUI(); // Re-bind listeners
+      }
+
+      // --- Calendar Rendering ---
+      function renderCalendar() {
+        grid.innerHTML = "";
+        const daysToRender = [];
+        for (let i = 28; i <= 31; i++) daysToRender.push(`2025-12-${i}`);
+        for (let i = 1; i <= 31; i++)
+          daysToRender.push(`2026-01-${i.toString().padStart(2, "0")}`);
+
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, "0");
+        const d = String(now.getDate()).padStart(2, "0");
+        const todayStr = `${y}-${m}-${d}`;
+        let firstAliveDateFound = false;
+
+        daysToRender.forEach((dateStr) => {
+          if (!appData[dateStr])
+            appData[dateStr] = {
+              type: "study",
+              text: "",
+              earnings: 0,
+              spent: 0,
+            };
+          const data = appData[dateStr];
+          const parts = dateStr.split("-");
+          const dayNum = parseInt(parts[2]);
+
+          const card = document.createElement("div");
+          card.className = `day-card type-${data.type}`;
+          const isEnded = dateStr < todayStr;
+          if (isEnded) card.classList.add("ended");
+
+          if (!isEnded) {
+            card.addEventListener("mousemove", (e) => {
+              const rect = card.getBoundingClientRect();
+              card.style.setProperty("--mouse-x", `${e.clientX - rect.left}px`);
+              card.style.setProperty("--mouse-y", `${e.clientY - rect.top}px`);
+            });
+          }
+
+          card.onclick = () => selectDate(dateStr, card);
+
+          // Type Badge
+          let badgeHtml = "";
+          if (data.type === "exam")
+            badgeHtml = `<span class="day-badge badge-exam">EXAM</span>`;
+          else if (data.type === "code")
+            badgeHtml = `<span class="day-badge badge-code">CODE</span>`;
+          else if (data.type === "party")
+            badgeHtml = `<span class="day-badge badge-exam" style="background:#db6d28;color:white">PARTY</span>`;
+          else badgeHtml = `<span class="day-badge badge-study">STUDY</span>`;
+
+          // Money Dots logic
+          let moneyDotsHtml = "";
+          if (data.earnings > 0 || data.spent > 0) {
+            moneyDotsHtml = `<div class="money-dots">`;
+            if (data.earnings > 0)
+              moneyDotsHtml += `<span class="dot-green">+$${data.earnings}</span>`;
+            if (data.spent > 0)
+              moneyDotsHtml += `<span class="dot-red">-$${data.spent}</span>`;
+            moneyDotsHtml += `</div>`;
+          }
+
+          card.innerHTML = `
+                <div class="date-number">
+                    <span>${dayNum}</span>
+                    ${badgeHtml}
+                </div>
+                <div class="task-preview">${data.text}</div>
+                ${moneyDotsHtml}
+            `;
+          grid.appendChild(card);
+
+          if (!isEnded && !firstAliveDateFound && !selectedDate) {
+            firstAliveDateFound = true;
+            setTimeout(() => selectDate(dateStr, card), 0);
+          }
+        });
+        calculateTotal();
+      }
+
+      function selectDate(dateStr, cardElement) {
+        if (currentView === "dashboard") restoreDayViewHTML();
+        currentView = "day";
+        selectedDate = dateStr;
+
+        document
+          .querySelectorAll(".day-card")
+          .forEach((c) => c.classList.remove("active"));
+        if (cardElement) cardElement.classList.add("active");
+        else {
+          // Find card if passed null (re-render scenario)
+          // Not strictly needed for simple select
+        }
+
+        const parts = dateStr.split("-");
+        const d = new Date(
+          parseInt(parts[0]),
+          parseInt(parts[1]) - 1,
+          parseInt(parts[2])
+        );
+        editorDateDisplay.textContent = d
+          .toLocaleDateString("en-US", {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+          })
+          .toUpperCase();
+
+        const data = appData[dateStr];
+        noteInput.value = data.text || "";
+        inputEarn.value = data.earnings || "";
+        inputSpent.value = data.spent || "";
+      }
+
+      // --- Data Persistence ---
+      function saveData() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+      }
+
+      let saveTimeout;
+      function autoSave() {
+        if (!selectedDate || currentView !== "day") return;
+
+        const dot = saveIndicator.querySelector(".status-dot");
+        dot.className = "status-dot saving";
+
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(() => {
+          const data = appData[selectedDate];
+          data.text = noteInput.value;
+          data.earnings = parseFloat(inputEarn.value) || 0;
+          data.spent = parseFloat(inputSpent.value) || 0;
+
+          saveData();
+          calculateTotal();
+
+          // Re-render specifically the text/dots of active card without full repaint to keep focus?
+          // For MVP simplicity, we full render to update money dots
+          // To keep focus, we won't full render, just update calculation.
+          // On next reload/click it updates visual dots.
+          // Actually, let's update visual dots live:
+          const activeCard = document.querySelector(".day-card.active");
+          if (activeCard) {
+            activeCard.querySelector(".task-preview").innerText = data.text;
+            // Simple dot update hack:
+            let dotsContainer = activeCard.querySelector(".money-dots");
+            if (!dotsContainer) {
+              dotsContainer = document.createElement("div");
+              dotsContainer.className = "money-dots";
+              activeCard.appendChild(dotsContainer);
+            }
+            let html = "";
+            if (data.earnings > 0)
+              html += `<span class="dot-green">+$${data.earnings}</span>`;
+            if (data.spent > 0)
+              html += `<span class="dot-red">-$${data.spent}</span>`;
+            dotsContainer.innerHTML = html;
+          }
+
+          dot.className = "status-dot saved";
+        }, 400);
+      }
+
+      // --- Resizer Logic ---
+      const resizer = document.getElementById("drag-handle");
+      let isResizing = false;
+
+      resizer.addEventListener("mousedown", (e) => {
+        isResizing = true;
+        resizer.classList.add("resizing");
+        document.body.style.cursor = "ew-resize";
+        e.preventDefault();
+      });
+
+      document.addEventListener("mousemove", (e) => {
+        if (!isResizing) return;
+        const newWidth = window.innerWidth - e.clientX;
+        if (newWidth > 300 && newWidth < 800) {
+          editorPanel.style.width = `${newWidth}px`;
+        }
+      });
+
+      document.addEventListener("mouseup", () => {
+        if (isResizing) {
+          isResizing = false;
+          resizer.classList.remove("resizing");
+          document.body.style.cursor = "default";
+        }
+      });
+
+      renderCalendar();
+    </script>
+  </body>
+</html>
